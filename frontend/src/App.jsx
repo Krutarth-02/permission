@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -49,7 +49,37 @@ const permissionSections = {
 export default function App() {
   const isMobile = useMediaQuery("(max-width: 800px)");
 
-  const [permissionsState, setPermissionsState] = useState(() => {
+  const [permissionsState, setPermissionsState] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  // -------------------------------
+  // LOAD PERMISSIONS FROM BACKEND
+  // -------------------------------
+  const loadPermissions = async () => {
+    try {
+      const res = await fetch("http://localhost:5000/api/permissions");
+      const data = await res.json();
+
+      if (data && data.rows) {
+        const formatted = {};
+        data.rows.forEach((row) => {
+          formatted[row.permission] = row.roles;
+        });
+
+        setPermissionsState(formatted);
+      } else {
+        initializeDefaultState();
+      }
+    } catch (err) {
+      console.error("Failed to load permissions:", err);
+      initializeDefaultState();
+    }
+
+    setLoading(false);
+  };
+
+  // Create initial empty permission matrix if backend is empty
+  const initializeDefaultState = () => {
     const state = {};
     Object.keys(permissionSections).forEach((section) => {
       permissionSections[section].forEach((perm) => {
@@ -59,27 +89,52 @@ export default function App() {
         });
       });
     });
-    return state;
-  });
+    setPermissionsState(state);
+  };
 
-  const handleToggle = async (perm, role) => {
-    const newValue = !permissionsState[perm][role];
+  useEffect(() => {
+    loadPermissions();
+  }, []);
 
-    setPermissionsState((prev) => ({
-      ...prev,
-      [perm]: { ...prev[perm], [role]: newValue },
-    }));
+  // -------------------------------
+  // SAVE TO BACKEND
+  // -------------------------------
+  const saveToServer = async (newState) => {
+    const payload = {
+      rows: Object.keys(newState).map((perm) => ({
+        permission: perm,
+        roles: newState[perm],
+      })),
+    };
 
     try {
-      await fetch("https://your-api-url.com/permissions/update", {
-        method: "POST",
+      await fetch("http://localhost:5000/api/permissions", {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ permission: perm, role, value: newValue }),
+        body: JSON.stringify(payload),
       });
     } catch (err) {
-      console.error("API failed:", err);
+      console.error("Failed to update permissions:", err);
     }
   };
+
+  // -------------------------------
+  // HANDLE CHECKBOX TOGGLE
+  // -------------------------------
+  const handleToggle = (perm, role) => {
+    const updated = {
+      ...permissionsState,
+      [perm]: {
+        ...permissionsState[perm],
+        [role]: !permissionsState[perm][role],
+      },
+    };
+
+    setPermissionsState(updated);
+    saveToServer(updated);
+  };
+
+  if (loading) return <Typography>Loading...</Typography>;
 
   return (
     <Box sx={{ width: "100%", p: 2 }}>

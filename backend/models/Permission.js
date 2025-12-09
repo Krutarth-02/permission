@@ -1,18 +1,26 @@
-import mongoose from "mongoose";
+const mongoose = require("mongoose");
 
-const rolePermissionSchema = new mongoose.Schema({
-  role: { type: String, required: true },
-  allowed: { type: Boolean, default: false }
+const roleFields = {
+  Everyone: { type: Boolean, default: true },
+  "Authenticated Users": { type: Boolean, default: true },
+  "Anzo Administrator": { type: Boolean, default: true },
+  "Data Analyst": { type: Boolean, default: true },
+  "Data Citizen": { type: Boolean, default: true },
+  "Data Curator": { type: Boolean, default: true },
+  "Data Governor": { type: Boolean, default: true },
+  "Data Scientist": { type: Boolean, default: true },
+};
+
+const PermissionRowSchema = new mongoose.Schema({
+  permission: { type: String, required: true },
+  roles: roleFields,
 });
 
-const permissionSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  rolePermissions: [rolePermissionSchema]
-});
+const PermissionMatrixSchema = new mongoose.Schema(
+  {
+    rows: [PermissionRowSchema],
+  },
+  { timestamps: true }
+);
 
-const permissionGroupSchema = new mongoose.Schema({
-  groupName: { type: String, required: true },
-  permissions: [permissionSchema]
-}, { timestamps: true });
-
-export default mongoose.model("PermissionGroup", permissionGroupSchema);
+module.exports = mongoose.model("PermissionMatrix", PermissionMatrixSchema);

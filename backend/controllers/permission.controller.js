@@ -1,27 +1,29 @@
-const notificationSchema = require('../models/nortify.model.js');
+const PermissionMatrix = require("../models/Permission.js");
 
-module.exports = async function nortifyController(req, res) {
+// GET matrix
+exports.getPermissions = async (req, res) => {
   try {
-    const newData = req.body;
+    const matrix = await PermissionMatrix.findOne();
+    res.json(matrix);
+  } catch (err) {
+    res.status(500).json({ error: "Server error" });
+  }
+};
 
-    let settings = await notificationSchema.findOne();
+// UPDATE matrix
+exports.updatePermissions = async (req, res) => {
+  try {
+    let matrix = await PermissionMatrix.findOne();
 
-    if (!settings) {
-      settings = await notificationSchema.create(newData);
+    if (!matrix) {
+      matrix = new PermissionMatrix({ rows: req.body.rows });
     } else {
-      Object.assign(settings, newData);
-      settings = await settings.save(); 
+      matrix.rows = req.body.rows;
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Settings saved successfully",
-      data: settings,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
+    await matrix.save();
+    res.json({ message: "Permissions updated", matrix });
+  } catch (err) {
+    res.status(500).json({ error: "Update failed" });
   }
 };
